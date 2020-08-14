@@ -1,0 +1,67 @@
+version: '3'
+
+services:
+  
+  traefik:
+    image: traefik
+    command: --web --docker --docker.domain=docker.localhost --logLevel=DEBUG
+    ports:
+      - "80:80"
+      - "8080:8080"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /dev/null:/traefik.toml
+      
+  # usage: curl -H Host:whoami.docker.localhost http://127.0.0.1
+  whoami:
+    image: containous/whoami # A container that exposes an API to show its IP address
+    labels:
+      - "traefik.frontend.rule=Host:whoami.docker.localhost"
+
+  # The container below uses the katacoda/docker-http-server image 
+  # which returns the hostname of the container processing the request.
+
+  # usage: curl -H Host:http-server.docker.localhost http://127.0.0.1
+  http-server:
+    image: katacoda/docker-http-server
+    labels:
+      - "traefik.backend=http-server"
+      - "traefik.frontend.rule=Host:http-server.docker.localhost"
+
+  # usage: curl -H Host:http-server-v2.docker.localhost http://127.0.0.1
+  http-server-v2:
+    image: katacoda/docker-http-server:v2
+    labels:
+      - "traefik.backend=http-server-v2"
+      - "traefik.frontend.rule=Host:http-server-v2.docker.localhost"
+
+  # return a html file
+  # usage: curl -H Host:some-nginx.docker.localhost http://127.0.0.1
+  nginx:
+    image: nginx:alpine
+    labels:
+      - traefik.backend=nginx
+      - traefik.frontend.rule=Host:some-nginx.docker.localhost
+      - traefik.port=80
+
+  # key-value database
+  # usage: redis-cli -h 'some-redis.docker.localhost' 
+  redis:
+    image: redis
+    ports: 
+      - "6379:6379"
+    labels:
+      - traefik.backend=redis
+      - traefik.frontend.rule=Host:some-redis.docker.localhost
+      - traefik.port=80
+
+  stress:
+    image: progrium/stress
+    command: --cpu 1 --io 1 --vm 1 --vm-bytes 128MB
+    labels:
+      - traefik.backend=stress
+      - traefik.frontend.rule=Host:some-stress.docker.localhost
+      - "service=stress"
+  
+  
